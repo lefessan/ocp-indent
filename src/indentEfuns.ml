@@ -1,7 +1,22 @@
 open IndentLexer
 
+let debug = try
+              Sys.getenv "INDENT_EFUNS" = "d"
+  with Not_found -> false
+
+let _ =
+  if debug then
+    Printf.eprintf "ocp-indent: debug efuns mode\n%!"
+
+let token lexbuf =
+  let tok = token lexbuf in
+  if debug then
+    Printf.eprintf "%s\n%!" (string_of_tok tok);
+  tok
+
 let indentation = ref 2
 
+(*
 let print_indentations list =
   print_string "Indentations :"; print_newline ();
   List.iter (fun (indent, list) ->
@@ -10,7 +25,9 @@ let print_indentations list =
       ) list
   ) list;
   print_newline ()
+*)
 
+(*
 let print_stack stack =
   print_string "Indentation stack:"; print_newline ();
   let rec iter stack =
@@ -23,6 +40,7 @@ let print_stack stack =
         iter stack
   in
   iter stack
+*)
 
 (*
 let rec pop_to_quote stack =
@@ -64,6 +82,7 @@ let fix indent eols indents =
           (indent, eols @ peols) :: tail
       | _ ->  (indent,eols) :: indents
 
+(*
 let rec pop_indentation indents =
   match indents with
     [] -> raise Not_found
@@ -72,6 +91,7 @@ let rec pop_indentation indents =
         [] -> pop_indentation indents
       | eol :: eols ->
           (indent, eol, (indent,eols) :: indents)
+*)
 
 let token_offset prev_tok =
   match prev_tok with
@@ -99,15 +119,17 @@ let token_offset prev_tok =
   | _ -> 0
 
 let rec parse lexbuf prev_tok stack eols indent indents =
-  let tok = IndentLexer.token lexbuf in
-  let pos = tok.tok_indent in
+  Printf.eprintf "parse\n%!";
+  let tok = token lexbuf in
+(*  let pos = tok.tok_indent in *)
   let token = tok.token in
   match token with
-    EOL  -> parse lexbuf prev_tok stack (pos::eols) indent indents
-  | EOF  -> fix indent  (pos :: eols) indents
-  | STRING_BEGIN -> (0,[0]) :: (fix indent eols indents)
+    EOL  -> parse lexbuf prev_tok stack (tok.tok_line::eols) indent indents
+  | EOF  -> fix indent  (tok.tok_line :: eols) indents
+(*  | STRING_BEGIN -> (0,[0]) :: (fix indent eols indents)
   | COMMENT_BEGIN -> ( !indentation,[0]) :: (fix 0 eols indents)
   | COMMENT_END -> parse lexbuf prev_tok stack [] indent (fix 0 eols indents)
+*)
   | LET ->
       (*
   indentation des LETs: Il faut savoir s'il s'agit d'un LET avec ou sans IN.
@@ -116,7 +138,7 @@ let rec parse lexbuf prev_tok stack eols indent indents =
 *)
       begin
         match prev_tok with
-          IN | THEN | COLONCOLON | INFIXOP0 | INFIXOP0 | INFIXOP1 |
+          IN | THEN | COLONCOLON | INFIXOP0 | INFIXOP1 |
           INFIXOP2 | INFIXOP3 | INFIXOP4 (* | SUBTRACTIVE *)
         | STAR | EQUAL | LESS |
           GREATER | OR | BARBAR | AMPERAMPER | AMPERSAND | COLONEQUAL |
@@ -163,7 +185,7 @@ let rec parse lexbuf prev_tok stack eols indent indents =
       (fix indent eols indents)
 
   | EQUAL ->
-      let (stack',kwd,indent') = pop_to_kwds [ (*DEF; *) BAR] stack in
+      let (_stack',_kwd,_indent') = pop_to_kwds [ (*DEF; *) BAR] stack in
       (* if we find a DEF, we are the first = after the DEF, ie a process
       follows. We put a BAR to prevent any other EQUAL to match this DEF.
   Other EQUALs should not be affected by this JoCaml need. *)
@@ -309,7 +331,7 @@ let rec parse lexbuf prev_tok stack eols indent indents =
          (* ENDQ, [BEGINQ]; *)
         ]
       in
-      let (stack,kwd, indent) = pop_to_kwds kwds stack in
+      let (stack,_kwd, indent) = pop_to_kwds kwds stack in
       parse lexbuf token stack [] indent (fix indent eols indents)
   | WITH ->
       let (stack,kwd,indent) = pop_to_kwds [MATCH;TRY;LBRACE] stack in
@@ -401,87 +423,8 @@ let rec parse lexbuf prev_tok stack eols indent indents =
       parse lexbuf token stack [] indent
         (fix (indent+offset) eols indents)
 
-let get_indentations pos lexbuf =
+let get_indentations lexbuf =
   parse lexbuf SEMISEMI [] [] 0 []
-
-(*
-let print_exc e s =
-  Printf.printf "Caught exception %s in %s" (Printexc.to_string e) s;
-  print_newline ()
-
-(* Now, use the indentation from the parser *)
-
-let compute_indentations buf start_point end_point =
-  let text = buf.buf_text in
-  let curseur = Text.dup_point text start_point in
-(* init indentation *)
-  let _pos = get_position text end_point in
-  let lexbuf = lexing text curseur end_point in
-  try
-    let indentations =
-      get_indentations (get_position text start_point) lexbuf in
-    remove_point text curseur;
-    indentations
-  with
-    e ->
-      remove_point text curseur;
-      raise e
-
-let find_phrase_start buf curseur =
-  let text = buf.buf_text in
-  try
-    let _ = Text.search_backward text (snd !!start_regexp) curseur in ()
-  with
-    Not_found -> Text.set_position text curseur 0
-
-let indent_between_points buf start_point end_point =
-  let text = buf.buf_text in
-  let session = start_session text in
-  let curseur = dup_point text start_point in
-  try
-    find_phrase_start buf curseur;
-    let indentations = compute_indentations buf curseur end_point in
-(* remove the Eof indentation *)
-    let _,_,indentations = pop_indentation indentations in
-(* indent other lines *)
-    let rec iter indents =
-      let (current,pos,indents) = pop_indentation indents in
-      set_position text curseur (pos+1);
-      set_indent text curseur current;
-      iter indents
-    in
-    iter indentations
-  with
-    e ->
-      commit_session text session;
-      remove_point text curseur
-
-(* Interactive: indent all lines of the current block *)
-let indent_phrase frame =
-  let buf = frame.frm_buffer in
-  let point = frame.frm_point in
-  indent_between_points buf point point
-
-let indent_region frame =
-  let buf = frame.frm_buffer in
-  let point = frame.frm_point in
-  let mark = Ebuffer.get_mark buf point in
-  let (start_point,end_point) =
-    if point < mark then (point,mark) else (mark,point)
-  in
-  indent_between_points buf start_point end_point
-
-
-let indent_buffer frame =
-  let buf = frame.frm_buffer in
-  let text = buf.buf_text in
-  let start_point = add_point text in
-  let end_point = add_point text in
-  set_position text end_point (Text.size text);
-  indent_between_points buf start_point end_point;
-  remove_point text start_point;
-  remove_point text end_point
-*)
 
 let string_of_channel ic =
   let s = String.create 32768 in
@@ -496,30 +439,65 @@ let string_of_channel ic =
   iter ic b s;
   Buffer.contents b
 
-let tokenize_file filename =
-  let ic = open_in filename in
+let indent_channel ic oc =
   let s = string_of_channel ic in
-  close_in ic;
   let lexbuf = Lexing.from_string s in
-  try
-  while true do
-    let tok = token lexbuf in
-    match tok.token with
-      EOF -> raise Exit
-    | _ -> ()
-  done
-  with Exit ->
-    close_in ic;
-    let lines = IndentLexer.lines () in
-    Printf.printf "line:  spc tab bol   eol   content\n%!";
-    Array.iteri (fun i line ->
-      Printf.printf "%4d: [%2d][%2d][%4d][%4d]%!"
-        i line.nspaces line.ntabs line.bol line.eol;
-      let len = line.eol - line.bol - 1 in
-      if len <> -1 then
-        Printf.printf "%S\n%!"
-        (String.sub s line.bol len)
-      else
-        Printf.printf "EOL\n%!"
-    ) lines
+
+  IndentLexer.init ();
+  let indentations = get_indentations lexbuf in
+
+  let lines = IndentLexer.lines () in
+  let nlines = Array.length lines in
+  let indents = Array.create nlines 0 in
+
+  let max_indent = ref 10 in
+
+    if debug then begin
+      Printf.eprintf "line:  spc tab bol   eol   content\n%!";
+      Array.iteri (fun i line ->
+        Printf.eprintf "%4d: [%2d][%2d][%4d][%4d]%!"
+          i line.nspaces line.ntabs line.bol line.eol;
+        let len = line.eol - line.bol - 1 in
+        if len <> -1 then
+          Printf.eprintf "%S\n%!"
+            (String.sub s line.bol len)
+        else
+          Printf.eprintf "EOF\n%!"
+      ) lines;
+    end;
+
+  if debug then begin
+    List.iter (fun (n, list) ->
+      Printf.eprintf "%d:\n%!" n;
+      List.iter (fun n ->
+        Printf.eprintf "\t%d\n%!" n) list
+    ) indentations;
+  end ;
+
+  List.iter (fun (nspaces, list) ->
+    if nspaces > !max_indent then max_indent := nspaces;
+    List.iter (fun line ->
+      indents.(line) <- nspaces;
+    ) list
+  ) indentations;
+
+  let max_indent = String.make !max_indent ' ' in
+
+  for i = 0 to nlines - 2 do
+    let line = lines.(i) in
+    let len = line.eol - line.bol - 1 in
+    Printf.fprintf oc "%s%s\n"
+      (String.sub max_indent 0 indents.(i))
+      (String.sub s line.bol len)
+  done;
+  let line = lines.(nlines-1) in
+  let len = line.eol - line.bol - 1 in
+  if len <> -1 then
+    Printf.fprintf oc "%s%s"
+      (String.sub max_indent 0 indents.(nlines-1))
+      (String.sub s line.bol len);
+  Printf.fprintf oc "%!"
+
+
+
 

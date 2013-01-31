@@ -175,3 +175,6 @@ let rec loop oc is_first_line block stream =
       loop oc false block stream
 
 
+let indent_channel ic oc =
+  let stream = Nstream.create ic in
+  loop oc true IndentBlock.empty stream

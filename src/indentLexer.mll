@@ -781,12 +781,6 @@ let float_literal =
               tok.tok_begin tok.tok_end
               tok.tok_indent
 
-
-          let token lexbuf =
-            let tok = token lexbuf in
-            Printf.eprintf "%s\n%!" (string_of_tok tok);
-            tok
-
           let indent line =
             (!spaces).(line), (!tabs).(line)
 

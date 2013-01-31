@@ -15,6 +15,9 @@
 
 open IndentArgs
 
+let use_efuns = try ignore (Sys.getenv "INDENT_EFUNS"); true with
+    Not_found -> false
+
 let indent_channel ic =
   if !arg_inplace && !arg_numeric_only then
     arg_error "--inplace and --numeric arg incompatible";
@@ -24,8 +27,10 @@ let indent_channel ic =
     | Some file -> open_out file, true
 
   in
-  let stream = Nstream.create ic in
-  IndentPrinter.loop oc true IndentBlock.empty stream;
+  if use_efuns then
+    IndentEfuns.indent_channel ic oc
+  else
+    IndentPrinter.indent_channel ic oc;
   flush oc;
   if need_close then close_out oc
 

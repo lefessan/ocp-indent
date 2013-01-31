@@ -98,9 +98,6 @@ let _ =
   "-o",  Arg.String (fun s -> arg_file_out := Some s),
                                        "file Save output in file";
 
-  "--efuns", Arg.String (fun file ->
-    arg_file := true;
-    IndentEfuns.tokenize_file file), "file (do not use)";
 ]
 
 let arg_list = !arg_list
