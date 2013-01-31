@@ -1,0 +1,153 @@
+
+type token =
+| AMPERAMPER
+| AMPERSAND
+| AND
+| AS
+| ASSERT
+| BACKQUOTE
+| BANG
+| BAR
+| BARBAR
+| BARRBRACKET
+| BEGIN
+| CHAR
+| CLASS
+| COLON
+| COLONCOLON
+| COLONEQUAL
+| COLONGREATER
+| COMMA
+| CONSTRAINT
+| DO
+| DONE
+| DOT
+| DOTDOT
+| DOWNTO
+| ELSE
+| END
+| EOL
+| EOF
+| EQUAL
+| EXCEPTION
+| EXTERNAL
+| FALSE
+| FLOAT
+| FOR
+| FUN
+| FUNCTION
+| FUNCTOR
+| GREATER
+| GREATERRBRACE
+| GREATERRBRACKET
+| IF
+| IN
+| INCLUDE
+| INFIXOP0
+| INFIXOP1
+| INFIXOP2
+| INFIXOP3
+| INFIXOP4
+| INHERIT
+| INITIALIZER
+| INT
+| INT32
+| INT64
+| LABEL
+| LAZY
+| LBRACE
+| LBRACELESS
+| LBRACKET
+| LBRACKETBAR
+| LBRACKETLESS
+| LBRACKETGREATER
+| LESS
+| LESSMINUS
+| LET
+| LIDENT
+| LPAREN
+| MATCH
+| METHOD
+| MINUS
+| MINUSDOT
+| MINUSGREATER
+| MODULE
+| MUTABLE
+| NATIVEINT
+| NEW
+| OBJECT
+| OF
+| OPEN
+| OPTLABEL
+| OR
+| PLUS
+| PLUSDOT
+| PREFIXOP
+| PRIVATE
+| QUESTION
+| QUESTIONQUESTION
+| QUOTE
+| RBRACE
+| RBRACKET
+| REC
+| RPAREN
+| SEMI
+| SEMISEMI
+| SHARP
+| SIG
+| STAR
+| STRUCT
+| THEN
+| TILDE
+| TO
+| TRUE
+| TRY
+| TYPE
+| UIDENT
+| UNDERSCORE
+| VAL
+| VIRTUAL
+| WHEN
+| WHILE
+| WITH
+
+| COMMENT_BEGIN (* multi-line comments *)
+| COMMENT_INSIDE
+| COMMENT_END
+
+| STRING_BEGIN
+| STRING_INSIDE
+| STRING_INDENTED (* after "\\\n" *)
+| STRING_END
+
+| QUOTATION_BEGIN
+| QUOTATION_INSIDE
+| QUOTATION_END
+
+| ILLEGAL_CHAR
+| LINENUM
+
+type tok = {
+  token : token;
+  tok_line : int;
+  tok_begin : int;
+  tok_end : int;
+  tok_indent : int;
+}
+
+val init : unit -> unit
+val token : Lexing.lexbuf -> tok
+
+val string_of_token : token -> string
+val string_of_tok : tok -> string
+
+val indent : int -> int * int
+
+type line = {
+  nspaces : int;
+  ntabs : int;
+  bol : int;
+  eol : int;
+}
+
+val lines : unit -> line array

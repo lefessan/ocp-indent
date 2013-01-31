@@ -8,6 +8,17 @@ begin library "ocp-indent-lexer"
   ]
 end
 
+begin library "ocp-indent-efuns"
+   sort = false
+   files = [
+     "indentLexer.mll"
+     "indentEfuns.ml"
+   ]
+   requires = [
+
+   ]
+end
+
 begin library "ocp-indent-utils"
    sort = false
    files = [
@@ -41,6 +52,6 @@ begin program "ocp-indent"
      "indentMain.ml"
    ]
    requires = [
-     "ocp-indent-lexer" "ocp-indent-lib"
+     "ocp-indent-lexer" "ocp-indent-lib" "ocp-indent-efuns"
    ]
 end
