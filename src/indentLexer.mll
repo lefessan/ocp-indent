@@ -586,13 +586,7 @@ let float_literal =
           {
             token_end := Lexing.lexeme_end lexbuf;
             comment lexbuf }
-(*
-      | "'" newline "'"
-          {
-            token_end := Lexing.lexeme_end lexbuf;
-            comment lexbuf
-          }
-*)
+
       | "'" [^ '\\' '\'' '\010' '\013' ] "'"
           {
             token_end := Lexing.lexeme_end lexbuf;
@@ -706,10 +700,6 @@ let float_literal =
           let update_line_begin lexbuf tok =
             match tok with
             | EOL ->
-(*
-              line_begin := Lexing.lexeme_end lexbuf;
-              set_eol !line_begin !line_num;
-*)
               incr line_num;
               newline := true
             | EOF ->
